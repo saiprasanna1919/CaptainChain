@@ -6,3 +6,9 @@ __pycache__/
 .terraform/
 *.tfstate*
 neo4j_data/
+
+# Raw CricSheet data (too large for git) - only keep final dataset
+backend/app/db/data/ipl_json/
+backend/app/db/data/odis_json/
+backend/app/db/data/t20s_json/
+backend/app/db/data/*.zip
