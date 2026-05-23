@@ -1,0 +1,49 @@
+name: Update Cricket Data
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday 6 AM UTC
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Download latest CricSheet data
+        run: |
+          mkdir -p backend/app/db/data
+          cd backend/app/db/data
+          curl -sL "https://cricsheet.org/downloads/ipl_json.zip" -o ipl_json.zip
+          curl -sL "https://cricsheet.org/downloads/odis_json.zip" -o odis_json.zip
+          curl -sL "https://cricsheet.org/downloads/t20s_json.zip" -o t20s_json.zip
+          unzip -qo ipl_json.zip -d ipl_json
+          unzip -qo odis_json.zip -d odis_json
+          unzip -qo t20s_json.zip -d t20s_json
+
+      - name: Rebuild dataset
+        run: |
+          cd backend
+          python -m app.db.build_dataset
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet backend/app/db/data/captainchain_dataset.json || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/app/db/data/captainchain_dataset.json
+          git commit -m "🏏 Auto-update: refresh cricket data from CricSheet"
+          git push
