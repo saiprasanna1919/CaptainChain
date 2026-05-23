@@ -1,0 +1,8 @@
+node_modules/
+.next/
+__pycache__/
+*.pyc
+.env
+.terraform/
+*.tfstate*
+neo4j_data/
