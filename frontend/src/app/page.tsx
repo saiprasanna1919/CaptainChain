@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SearchBar from "@/components/SearchBar";
 import GraphView from "@/components/GraphView";
 import Timeline from "@/components/Timeline";
@@ -11,7 +11,9 @@ type Tab = "graph" | "timeline" | "facts" | "trending";
 export default function Home() {
   const [player1, setPlayer1] = useState("");
   const [player2, setPlayer2] = useState("");
-  const [graphData, setGraphData] = useState<any>(null);
+  const [searchedPlayer, setSearchedPlayer] = useState("");
+  const [searchedPlayer2, setSearchedPlayer2] = useState("");
+  const [graphData, setGraphData] = useState<Record<string, unknown> | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("graph");
   const [loading, setLoading] = useState(false);
 
@@ -20,18 +22,17 @@ export default function Home() {
   async function searchRelationship() {
     if (!player1) return;
     setLoading(true);
+    setSearchedPlayer(player1);
+    setSearchedPlayer2(player2);
+    const url = player2
+      ? `${API}/shortest-path?player1=${player1}&player2=${player2}`
+      : `${API}/player/connections/${player1}`;
     try {
-      if (player2) {
-        const res = await fetch(`${API}/shortest-path?player1=${player1}&player2=${player2}`);
-        const data = await res.json();
-        setGraphData(data);
-      } else {
-        const res = await fetch(`${API}/player/connections/${player1}`);
-        const data = await res.json();
-        setGraphData(data);
-      }
+      const res = await fetch(url);
+      const data = await res.json();
+      setGraphData(data);
     } catch (e) {
-      console.error(e);
+      console.error("Fetch error:", e);
     }
     setLoading(false);
   }
@@ -80,11 +81,22 @@ export default function Home() {
 
         <div className="mt-4">
           {activeTab === "graph" && <GraphView data={graphData} />}
-          {activeTab === "timeline" && <Timeline player={player1} api={API} />}
-          {activeTab === "facts" && <HiddenFacts player={player1} api={API} />}
+          {activeTab === "timeline" && <Timeline player={searchedPlayer} api={API} />}
+          {activeTab === "facts" && <HiddenFacts player={searchedPlayer} api={API} />}
           {activeTab === "trending" && <TrendingSection api={API} />}
         </div>
       </div>
+
+      <footer className="border-t border-gray-800 mt-12 p-6 text-center text-gray-500 text-sm">
+        <p className="mb-2">
+          ⚠️ Data tracks primary captain per team per season. Stand-in or mid-season captaincy changes may not be reflected.
+        </p>
+        <p>
+          Built by <span className="text-yellow-400 font-medium">gspkumar</span> • Data sourced from{" "}
+          <a href="https://cricsheet.org" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline">CricSheet</a>{" "}
+          &amp; Wikipedia
+        </p>
+      </footer>
     </main>
   );
 }
