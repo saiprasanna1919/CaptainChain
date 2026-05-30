@@ -1,7 +1,8 @@
 "use client";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   Node,
@@ -10,33 +11,38 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-interface Props {
-  data: any;
+interface Connection {
+  connected_to: string;
+  team: string;
+  season: string;
 }
 
-export default function GraphView({ data }: Props) {
-  if (!data) {
-    return (
-      <div className="h-96 flex items-center justify-center text-gray-500">
-        Search for a player to see their captain chain graph
-      </div>
-    );
-  }
+interface GraphData {
+  path?: string[];
+  relationships?: { team: string; season: string }[];
+  player?: string;
+  connections?: Connection[];
+}
 
-  // Build nodes and edges from path data or connections data
+interface Props {
+  data: GraphData | null;
+}
+
+function Graph({ data }: Props) {
   const { nodes, edges } = useMemo(() => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
+    if (!data) return { nodes, edges };
+
     if (data.path) {
-      // Shortest path result
       data.path.forEach((name: string, i: number) => {
         nodes.push({
           id: name,
           position: { x: 250 * i, y: 100 + (i % 2) * 80 },
           data: { label: name },
           style: {
-            background: i === 0 ? "#eab308" : i === data.path.length - 1 ? "#f97316" : "#374151",
+            background: i === 0 ? "#eab308" : i === data.path!.length - 1 ? "#f97316" : "#374151",
             color: "white",
             border: "1px solid #6b7280",
             borderRadius: "8px",
@@ -48,7 +54,7 @@ export default function GraphView({ data }: Props) {
           const rel = data.relationships?.[i - 1];
           edges.push({
             id: `e-${i}`,
-            source: data.path[i - 1],
+            source: data.path![i - 1],
             target: name,
             label: rel ? `${rel.team} (${rel.season})` : "",
             style: { stroke: "#eab308" },
@@ -57,11 +63,10 @@ export default function GraphView({ data }: Props) {
         }
       });
     } else if (data.connections) {
-      // Connections result
-      const playerName = data.player;
+      const playerName = data.player!;
       nodes.push({
         id: playerName,
-        position: { x: 300, y: 200 },
+        position: { x: 300, y: 300 },
         data: { label: playerName },
         style: {
           background: "#eab308",
@@ -73,15 +78,18 @@ export default function GraphView({ data }: Props) {
       });
 
       const seen = new Set<string>();
-      data.connections.forEach((conn: any, i: number) => {
-        const other = conn.connected_to;
-        if (seen.has(other)) return;
-        seen.add(other);
-        const angle = (i / data.connections.length) * 2 * Math.PI;
+      const uniqueConns = data.connections.filter((conn) => {
+        if (seen.has(conn.connected_to)) return false;
+        seen.add(conn.connected_to);
+        return true;
+      });
+      const limited = uniqueConns.slice(0, 20);
+      limited.forEach((conn, i: number) => {
+        const angle = (i / limited.length) * 2 * Math.PI;
         nodes.push({
-          id: other,
-          position: { x: 300 + Math.cos(angle) * 200, y: 200 + Math.sin(angle) * 200 },
-          data: { label: other },
+          id: conn.connected_to,
+          position: { x: 300 + Math.cos(angle) * 220, y: 300 + Math.sin(angle) * 220 },
+          data: { label: conn.connected_to },
           style: {
             background: "#374151",
             color: "white",
@@ -93,7 +101,7 @@ export default function GraphView({ data }: Props) {
         edges.push({
           id: `e-${i}`,
           source: playerName,
-          target: other,
+          target: conn.connected_to,
           label: `${conn.team} ${conn.season}`,
           style: { stroke: "#6b7280" },
           labelStyle: { fill: "#9ca3af", fontSize: 10 },
@@ -104,8 +112,16 @@ export default function GraphView({ data }: Props) {
     return { nodes, edges };
   }, [data]);
 
+  if (!data || nodes.length === 0) {
+    return (
+      <div className="h-96 flex items-center justify-center text-gray-500">
+        Search for a player to see their captain chain graph
+      </div>
+    );
+  }
+
   return (
-    <div className="h-96 border border-gray-800 rounded-lg overflow-hidden">
+    <div style={{ width: "100%", height: "500px" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -117,5 +133,13 @@ export default function GraphView({ data }: Props) {
         <Controls />
       </ReactFlow>
     </div>
+  );
+}
+
+export default function GraphView({ data }: Props) {
+  return (
+    <ReactFlowProvider>
+      <Graph data={data} />
+    </ReactFlowProvider>
   );
 }

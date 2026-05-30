@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function TrendingSection({ api }: Props) {
-  const [trending, setTrending] = useState<any[]>([]);
+  const [trending, setTrending] = useState<{ player: string; connections: number }[]>([]);
 
   useEffect(() => {
     fetch(`${api}/trending-connections`)

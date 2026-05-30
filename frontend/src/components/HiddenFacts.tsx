@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function HiddenFacts({ player, api }: Props) {
-  const [facts, setFacts] = useState<any[]>([]);
+  const [facts, setFacts] = useState<{ fact: string; context: string }[]>([]);
 
   useEffect(() => {
     if (!player) return;
